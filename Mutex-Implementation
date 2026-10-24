@@ -1,0 +1,10 @@
+#include <mutex>
+
+// Inside the LRUCache class:
+mutable std::mutex cacheMutex;
+
+// At the beginning of get():
+lock_guard<mutex> lock(cacheMutex);
+
+// At the beginning of put():
+lock_guard<mutex> lock(cacheMutex);
