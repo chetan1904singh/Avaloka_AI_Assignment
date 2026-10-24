@@ -1,0 +1,94 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+// Converts 1 -> A, 2 -> B, ..., 26 -> Z, 27 -> AA
+string room_name(int id) {
+    string label;
+
+    while (id > 0) {
+        --id;
+        label.insert(
+            label.begin(),
+            static_cast<char>('A' + id % 26)
+        );
+        id /= 26;
+    }
+
+    return "Room " + label;
+}
+
+
+// Returns the assigned room for each event in input order
+vector<string> assign_rooms(
+    const vector<pair<int, int>>& events
+) {
+    struct IndexedEvent {
+        int start;
+        int end;
+        size_t originalIndex;
+    };
+
+    vector<IndexedEvent> sortedEvents;
+
+    for (size_t i = 0; i < events.size(); i++) {
+        sortedEvents.push_back({
+            events[i].first,
+            events[i].second,
+            i
+        });
+    }
+
+    sort(
+        sortedEvents.begin(),
+        sortedEvents.end(),
+        [](const IndexedEvent& a, const IndexedEvent& b) {
+            return a.start < b.start;
+        }
+    );
+
+    // Stores {meeting end time, room number}
+    using ActiveRoom = pair<int, int>;
+
+    priority_queue<
+        ActiveRoom,
+        vector<ActiveRoom>,
+        greater<ActiveRoom>
+    > occupiedRooms;
+
+    // Stores room numbers that can be reused
+    priority_queue<
+        int,
+        vector<int>,
+        greater<int>
+    > availableRooms;
+
+    vector<string> assignments(events.size());
+    int nextRoom = 1;
+
+    for (const auto& event : sortedEvents) {
+        // Release rooms whose meetings have ended
+        while (!occupiedRooms.empty() &&
+               occupiedRooms.top().first <= event.start) {
+            availableRooms.push(
+                occupiedRooms.top().second
+            );
+            occupiedRooms.pop();
+        }
+
+        int roomId;
+
+        if (!availableRooms.empty()) {
+            roomId = availableRooms.top();
+            availableRooms.pop();
+        } else {
+            roomId = nextRoom++;
+        }
+
+        occupiedRooms.push({event.end, roomId});
+
+        // Preserve the original event order
+        assignments[event.originalIndex] = room_name(roomId);
+    }
+
+    return assignments;
+}
