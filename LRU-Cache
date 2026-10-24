@@ -1,67 +1,75 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-using Event = pair<int, int>;  // {start time, end time}
+class LRUCache {
+private:
+    int capacity;
 
+    // Front = most recently used, back = least recently used
+    list<int> recentKeys;
 
-// Returns true if all events can be attended
-bool can_attend_all(vector<Event> events) {
-    sort(events.begin(), events.end());
+    struct CacheEntry {
+        int value;
+        list<int>::iterator position;
+    };
 
-    if (events.empty()) {
-        return true;
-    }
+    unordered_map<int, CacheEntry> cache;
 
-    int latestEnd = events[0].second;
+public:
+    explicit LRUCache(int cap)
+        : capacity(cap > 0 ? cap : 0) {}
 
-    for (size_t i = 1; i < events.size(); i++) {
-        int start = events[i].first;
-        int end = events[i].second;
+    int get(int key) {
+        auto it = cache.find(key);
 
-        // Adjacent events are allowed
-        if (start < latestEnd) {
-            return false;
+        if (it == cache.end()) {
+            return -1;
         }
 
-        latestEnd = max(latestEnd, end);
+        // Move the existing key to the front in O(1)
+        recentKeys.splice(
+            recentKeys.begin(),
+            recentKeys,
+            it->second.position
+        );
+
+        return it->second.value;
     }
 
-    return true;
-}
-
-
-// Returns the minimum number of rooms required
-int min_rooms_required(vector<Event> events) {
-    sort(events.begin(), events.end());
-
-    // Min-heap of end times of ongoing meetings
-    priority_queue<
-        int,
-        vector<int>,
-        greater<int>
-    > activeEnds;
-
-    int maxRooms = 0;
-
-    for (const auto& event : events) {
-        int start = event.first;
-        int end = event.second;
-
-        // Release all rooms whose meetings have ended
-        while (!activeEnds.empty() &&
-               activeEnds.top() <= start) {
-            activeEnds.pop();
+    void put(int key, int value) {
+        if (capacity == 0) {
+            return;
         }
 
-        // Schedule the current meeting
-        activeEnds.push(end);
+        auto it = cache.find(key);
 
-        // Track the maximum simultaneous room usage
-        maxRooms = max(
-            maxRooms,
-            static_cast<int>(activeEnds.size())
+        // Update an existing key
+        if (it != cache.end()) {
+            it->second.value = value;
+
+            recentKeys.splice(
+                recentKeys.begin(),
+                recentKeys,
+                it->second.position
+            );
+
+            return;
+        }
+
+        // Evict the least recently used key if full
+        if (cache.size() == static_cast<size_t>(capacity)) {
+            int leastRecentKey = recentKeys.back();
+
+            recentKeys.pop_back();
+            cache.erase(leastRecentKey);
+        }
+
+        // Insert the new key at the front
+        recentKeys.push_front(key);
+
+        cache.emplace(
+            key,
+            CacheEntry{value, recentKeys.begin()}
         );
     }
-
-    return maxRooms;
-}
+};
